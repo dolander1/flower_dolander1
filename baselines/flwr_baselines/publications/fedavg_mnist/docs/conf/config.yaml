@@ -1,0 +1,35 @@
+num_clients: 10
+num_rounds: 10
+num_epochs: 1 # Constant, for now
+batch_size: 32 # Constant, for now
+
+iid: True
+balance: True # Constant, for now
+client_fraction: 1.0
+expected_maximum: 0.9924 # Only used for plotting
+learning_rate: 0.1 # Constant, for now
+
+frac_eval: 1.0 #Daniel 
+mu: 1.0 #Daniel for FedProx, constant for now
+
+save_path: "docs/hannesResults" # Hannes, *adjust* 
+fed_optimizer: "FedAvg" # Hannes 
+current_test: "num_clients" # Hannes 
+
+
+# psudo nohup python main.py num_clients=10 num_rounds=2 batch_size=32 iid=True client_fraction=1.0 frac_eval=1.0 fed_optimizer="FedAvg" current_test="num_clients" --multirun & 
+# nohup python [python file name.py] &
+
+
+# Run 1 num_clients:
+# psudo nohup python main.py num_clients=1,5,10,20,40 num_rounds=30 batch_size=32 iid=True client_fraction=1.0 frac_eval=1.0 fed_optimizer="FedAvg" current_test="num_clients" --multirun & 
+# Addition: psudo nohup python main.py num_clients=80 num_rounds=30 batch_size=32 iid=True client_fraction=1.0 frac_eval=1.0 fed_optimizer="FedAvg" current_test="num_clients" & 
+
+# Run 2 learning_rate
+# psudo nohup python main.py num_clients=10 num_rounds=100 batch_size=32 iid=True client_fraction=1.0 frac_eval=1.0 fed_optimizer="FedAvg" current_test="num_clients" learning_rate=0.1,0.01,0.001,0.0001 --multirun & 
+
+# Run 3 batch_size quicky
+# psudo nohup python main.py num_clients=10 num_rounds=10 batch_size=10,16,32,64 iid=True client_fraction=1.0 frac_eval=1.0 fed_optimizer="FedAvg" current_test="num_clients" learning_rate=0.1 --multirun & 
+
+# Run 4 num_clients long run:
+# psudo nohup python main.py num_clients=1,5,10,20,40,80 num_rounds=100 batch_size=32 iid=True client_fraction=1.0 frac_eval=1.0 fed_optimizer="SaveModelStrategyFedAvg" current_test="num_clients" --multirun & 
