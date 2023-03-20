@@ -15,10 +15,18 @@ mu: 1.0 #Daniel for FedProx, constant for now
 save_path: "docs/hannesResults" # Hannes, *adjust* 
 fed_optimizer: "FedAvg" # Hannes 
 current_test: "num_clients" # Hannes 
+eta: 0.1 # Hannes
+eta1: 0.1 # Hannes 
+tau: 0.001 # Hannes
 
+get_initial_parameters:
+  _target_: utils.get_initial_parameters
+  # num_classes: ${num_classes}
 
 # psudo nohup python main.py num_clients=10 num_rounds=2 batch_size=32 iid=True client_fraction=1.0 frac_eval=1.0 fed_optimizer="FedAvg" current_test="num_clients" --multirun & 
 # nohup python [python file name.py] &
+# Send files from server to local (done from local)
+# scp -r danielhannes@10.40.62.12:/home/hannes/storage_folder/daniel/flower/baselines/flwr_baselines/publications/fedavg_mnist/docs/SAVEresults .
 
 
 # Run 1 num_clients:
