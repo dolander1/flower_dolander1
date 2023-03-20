@@ -18,6 +18,27 @@ from hydra.utils import call, get_original_cwd, instantiate, to_absolute_path #D
 from flwr.common.typing import Parameters # Hannes, for parameters fix Hannes_FedOpt
 from hydra.utils import call # Hannes testar 15/3
 
+# Daniel for saving weights
+from logging import WARNING
+from typing import Callable, Dict, List, Optional, Tuple, Union
+
+from flwr.common import (
+    FitRes,
+    MetricsAggregationFn,
+    NDArrays,
+    Parameters,
+    Scalar,
+    ndarrays_to_parameters,
+    parameters_to_ndarrays,
+)
+from flwr.common.logger import log
+from flwr.server.client_manager import ClientManager
+from flwr.server.client_proxy import ClientProxy
+
+from flwr.server.strategy.aggregate import aggregate
+from flwr.server.strategy.fedavg import FedAvg
+# Daniel for saving weights end
+
 # DEVICE: torch.device = torch.device("cuda:0") #Daniel
 # DEVICE: torch.device = torch.device("cpu") #Daniel
 DEVICE: torch.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") #Daniel for GPU
@@ -49,6 +70,39 @@ def main(cfg: DictConfig) -> None:
     # training_loss_cl, training_accuracy_cl, validation_loss_cl, validation_accuracy_cl, test_loss_cl, test_accuracy_cl = centralized_learning.run_CL(cfg)
     # # # (ABOVE) ##################################################### -------------- CL (Hannes) -------------- ##################################################################
 
+    
+    # Hannes label
+    this_test = cfg.current_test
+    testdict = {
+        "num_clients": cfg.num_clients,
+        "num_rounds": cfg.num_rounds,
+        "num_epochs": cfg.num_epochs,
+        "iid": cfg.iid,
+        "client_fraction": cfg.client_fraction,
+        "fed_optimizer": cfg.fed_optimizer,
+        "batch_size": cfg.batch_size,
+        "learning_rate": cfg.learning_rate,
+    }
+    thisLable = this_test + ": " + str(testdict[this_test])
+
+    # File suffix
+    file_suffix: str = (
+        f"{'_iid' if cfg.iid else ''}"
+        f"{'_balanced' if cfg.balance else ''}"
+        f"_C={cfg.num_clients}"
+        f"_Cf={cfg.client_fraction}" # Hannes 
+        f"_Ef={cfg.frac_eval}" #Daniel
+        f"_B={cfg.batch_size}"
+        f"_E={cfg.num_epochs}"
+        f"_R={cfg.num_rounds}"
+        f"_Opt={cfg.fed_optimizer}" # Hannes 
+        f"_Lr={cfg.learning_rate}" # Hannes 
+        # f"_eta={cfg.eta}" # Hannes 
+        # f"_eta1={cfg.eta1}" # Hannes 
+    )
+
+
+    
     # The last of Hannes versions
     initial_parameters: Parameters = call(cfg.get_initial_parameters) # Hannes 
 
@@ -128,24 +182,7 @@ def main(cfg: DictConfig) -> None:
         ) 
     elif fed_optimizer == "SaveModelStrategyFedAvg":
         print("Avg Save Model running")
-        from logging import WARNING
-        from typing import Callable, Dict, List, Optional, Tuple, Union
-
-        from flwr.common import (
-            FitRes,
-            MetricsAggregationFn,
-            NDArrays,
-            Parameters,
-            Scalar,
-            ndarrays_to_parameters,
-            parameters_to_ndarrays,
-        )
-        from flwr.common.logger import log
-        from flwr.server.client_manager import ClientManager
-        from flwr.server.client_proxy import ClientProxy
-
-        from flwr.server.strategy.aggregate import aggregate
-        from flwr.server.strategy.fedavg import FedAvg
+     
         class SaveModelStrategyFedAvg(fl.server.strategy.FedAvg):
             def aggregate_fit(
                 self,
@@ -163,9 +200,8 @@ def main(cfg: DictConfig) -> None:
 
                     # Save aggregated_ndarrays
                     print(f"Saving round {server_round} aggregated_ndarrays...")
-                    np.savez(f"docs/SAVEresults/TestFolder/C={cfg.num_clients}_weights.npz", *aggregated_ndarrays)
-                    # np.savez(f"docs/hannesResults/{cfg.current_test}/round-{server_round}-weights.npz", *aggregated_ndarrays)
-
+                    np.savez(f"docs/tmpResults/weights_{file_suffix}.npz", *aggregated_ndarrays)
+                   
                 return aggregated_parameters, aggregated_metrics
 
         strategy = SaveModelStrategyFedAvg(
@@ -210,20 +246,7 @@ def main(cfg: DictConfig) -> None:
         }
     )
 
-    file_suffix: str = (
-        f"{'_iid' if cfg.iid else ''}"
-        f"{'_balanced' if cfg.balance else ''}"
-        f"_C={cfg.num_clients}"
-        f"_Cf={cfg.client_fraction}" # Hannes 
-        f"_Ef={cfg.frac_eval}" #Daniel
-        f"_B={cfg.batch_size}"
-        f"_E={cfg.num_epochs}"
-        f"_R={cfg.num_rounds}"
-        f"_Opt={cfg.fed_optimizer}" # Hannes 
-        f"_Lr={cfg.learning_rate}" # Hannes 
-        # f"_eta={cfg.eta}" # Hannes 
-        # f"_eta1={cfg.eta1}" # Hannes 
-    )
+  
 
     np.save(
         Path(cfg.save_path) / Path(f"hist{file_suffix}"),
@@ -238,19 +261,6 @@ def main(cfg: DictConfig) -> None:
     #     file_suffix,
     # )
 
-    #Hannes 
-    this_test = cfg.current_test
-    testdict = {
-        "num_clients": cfg.num_clients,
-        "num_rounds": cfg.num_rounds,
-        "num_epochs": cfg.num_epochs,
-        "iid": cfg.iid,
-        "client_fraction": cfg.client_fraction,
-        "fed_optimizer": cfg.fed_optimizer,
-        "batch_size": cfg.batch_size,
-        "learning_rate": cfg.learning_rate,
-    }
-    thisLable = this_test + ": " + str(testdict[this_test])
 
     utils.plot_metric_from_history_NEW(
         history,

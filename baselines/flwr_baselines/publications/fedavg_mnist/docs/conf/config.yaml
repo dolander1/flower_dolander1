@@ -14,7 +14,7 @@ learning_rate: 0.1 # Constant, for now
 frac_eval: 1.0 #Daniel 
 mu: 1.0 #Daniel for FedProx, constant for now
 
-save_path: "docs/hannesResults" # Hannes, *adjust* 
+save_path: "docs/tmpResults" # Hannes, *adjust* 
 fed_optimizer: "FedAvg" # Hannes 
 current_test: "num_clients" # Hannes 
 eta: 0.1 # Hannes
