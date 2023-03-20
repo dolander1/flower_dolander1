@@ -13,6 +13,11 @@ from flwr.common.typing import NDArrays, Scalar
 from flwr.server.history import History
 from torch.utils.data import DataLoader
 
+# Hannes
+from flwr.common.parameter import ndarrays_to_parameters # Hannes, for parameters fix Hannes_FedOpt
+from flwr.common.typing import NDArrays, Scalar, Parameters # Hannes la till parameters, for parameters fix Hannes_FedOpt
+# from tempfile import TemporaryFile # Hannes la till parameters, for parameters fix Hannes_FedOpt
+
 from flwr_baselines.publications.fedavg_mnist import model
 
 def plot_metric_from_history_NEW(
@@ -196,6 +201,11 @@ def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Metrics:
     accuracies = [num_examples * m["accuracy"] for num_examples, m in metrics]
     examples = [num_examples for num_examples, _ in metrics]
 
+    # # Hannes printlines
+    # print(f"accuracies: {accuracies}")
+    # print(f"examples: {examples}")
+    # print(f"accuracy: {int(sum(accuracies)) / int(sum(examples))}")
+
     # Aggregate and return custom metric (weighted average)
     return {"accuracy": int(sum(accuracies)) / int(sum(examples))}
 
@@ -240,3 +250,21 @@ def gen_evaluate_fn(
         #return loss, accuracy # Hannes
 
     return evaluate
+
+# Hannes_FedOpt
+def get_initial_parameters() -> Parameters:
+    """Returns initial parameters from a model.
+    Args:
+        num_classes (int, optional): Defines if using CIFAR10 or 100. Defaults to 10.
+    Returns:
+        Parameters: Parameters to be sent back to the server.
+    """
+    thisModel = model.Net()
+    weights = [val.cpu().numpy() for _, val in thisModel.state_dict().items()]
+    # weights = thisModel.parameters()
+    parameters = ndarrays_to_parameters(weights)
+
+    # initialParameters = TemporaryFile()
+    # np.save(initialParameters, parameters)
+
+    return parameters

@@ -29,11 +29,11 @@ get_initial_parameters:
 # scp -r danielhannes@10.40.62.12:/home/hannes/storage_folder/daniel/flower/baselines/flwr_baselines/publications/fedavg_mnist/docs/SAVEresults .
 
 
-# Run 1 num_clients:
+# Run 1 num_clients quicky
 # psudo nohup python main.py num_clients=1,5,10,20,40 num_rounds=30 batch_size=32 iid=True client_fraction=1.0 frac_eval=1.0 fed_optimizer="FedAvg" current_test="num_clients" --multirun & 
 # Addition: psudo nohup python main.py num_clients=80 num_rounds=30 batch_size=32 iid=True client_fraction=1.0 frac_eval=1.0 fed_optimizer="FedAvg" current_test="num_clients" & 
 
-# Run 2 learning_rate
+# Run 2 learning_rate long run
 # psudo nohup python main.py num_clients=10 num_rounds=100 batch_size=32 iid=True client_fraction=1.0 frac_eval=1.0 fed_optimizer="FedAvg" current_test="num_clients" learning_rate=0.1,0.01,0.001,0.0001 --multirun & 
 
 # Run 3 batch_size quicky
@@ -41,3 +41,9 @@ get_initial_parameters:
 
 # Run 4 num_clients long run:
 # psudo nohup python main.py num_clients=1,5,10,20,40,80 num_rounds=100 batch_size=32 iid=True client_fraction=1.0 frac_eval=1.0 fed_optimizer="SaveModelStrategyFedAvg" current_test="num_clients" --multirun & 
+
+# Run 5 batch_size long run
+# psudo nohup python main.py num_clients=10 num_rounds=100 batch_size=10,16,32,64,128 iid=True client_fraction=1.0 frac_eval=1.0 fed_optimizer="SaveModelStrategyFedAvg" current_test="num_clients" learning_rate=0.1 --multirun & 
+
+# Run 6 client_fraction long run
+# psudo nohup python main.py num_clients=10 num_rounds=100 batch_size=32 iid=True client_fraction=1.0,0.8,0.6,0.4,0.2 frac_eval=1.0 fed_optimizer="SaveModelStrategyFedAvg" current_test="num_clients" learning_rate=0.1 --multirun & 
