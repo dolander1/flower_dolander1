@@ -20,7 +20,7 @@ from hydra.utils import call # Hannes testar 15/3
 
 # DEVICE: torch.device = torch.device("cuda:0") #Daniel
 # DEVICE: torch.device = torch.device("cpu") #Daniel
-DEVICE: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu") #Daniel for GPU
+DEVICE: torch.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") #Daniel for GPU
 
 
 @hydra.main(config_path="docs/conf", config_name="config", version_base=None)
@@ -55,6 +55,7 @@ def main(cfg: DictConfig) -> None:
     # Hannes 
     fed_optimizer = cfg.fed_optimizer
     if fed_optimizer == "FedProx":
+        print("Prox running")
         strategy = fl.server.strategy.FedProx(
             fraction_fit=cfg.client_fraction,
             fraction_evaluate = cfg.frac_eval, # 1.0, # Hannes (changed from 0.0)
@@ -66,6 +67,7 @@ def main(cfg: DictConfig) -> None:
             proximal_mu = cfg.mu,
         )
     elif fed_optimizer == "FedAvgM":
+        print("AvgM running")
         strategy = fl.server.strategy.FedAvgM(
             fraction_fit=cfg.client_fraction,
             fraction_evaluate = cfg.frac_eval,
@@ -76,6 +78,7 @@ def main(cfg: DictConfig) -> None:
             evaluate_metrics_aggregation_fn=utils.weighted_average,
         )
     elif fed_optimizer == "FedAdam": # Hannes_FedOpt (Whole block) TODO: fix
+        print("Adam running")
         strategy = fl.server.strategy.FedAdam(
             fraction_fit=cfg.client_fraction,
             fraction_evaluate = cfg.frac_eval,
@@ -92,6 +95,7 @@ def main(cfg: DictConfig) -> None:
             tau = cfg.tau, #1e-9, # Hannes, changed from e-9 to avoid nan
         )
     elif fed_optimizer == "FedAdagrad": # Hannes_FedOpt (Whole block) TODO: fix
+        print("Adagrad running")
         strategy = fl.server.strategy.FedAdagrad(
             fraction_fit=cfg.client_fraction,
             fraction_evaluate = cfg.frac_eval,
@@ -106,7 +110,76 @@ def main(cfg: DictConfig) -> None:
             eta_l = cfg.eta1, #1e-1, # Hannes 
             tau = cfg.tau, #1e-9, # Hannes, changed from e-9 to avoid nan
         ) 
+    elif fed_optimizer == "FedYogi": # Hannes_FedOpt (Whole block) TODO: fix
+        print("Yogi running")
+        strategy = fl.server.strategy.FedYogi(
+            fraction_fit=cfg.client_fraction,
+            fraction_evaluate = cfg.frac_eval,
+            min_fit_clients=int(cfg.num_clients * cfg.client_fraction),
+            min_evaluate_clients=0,
+            min_available_clients=cfg.num_clients,
+            evaluate_fn=evaluate_fn,
+            evaluate_metrics_aggregation_fn=utils.weighted_average,
+            accept_failures = True, # Hannes
+            initial_parameters=initial_parameters, # Hannes  Hannes_FedOpt
+            eta = cfg.eta, #1e-1, # Hannes
+            eta_l = cfg.eta1, #1e-1, # Hannes 
+            tau = cfg.tau, #1e-9, # Hannes, changed from e-9 to avoid nan
+        ) 
+    elif fed_optimizer == "SaveModelStrategyFedAvg":
+        print("Avg Save Model running")
+        from logging import WARNING
+        from typing import Callable, Dict, List, Optional, Tuple, Union
+
+        from flwr.common import (
+            FitRes,
+            MetricsAggregationFn,
+            NDArrays,
+            Parameters,
+            Scalar,
+            ndarrays_to_parameters,
+            parameters_to_ndarrays,
+        )
+        from flwr.common.logger import log
+        from flwr.server.client_manager import ClientManager
+        from flwr.server.client_proxy import ClientProxy
+
+        from flwr.server.strategy.aggregate import aggregate
+        from flwr.server.strategy.fedavg import FedAvg
+        class SaveModelStrategyFedAvg(fl.server.strategy.FedAvg):
+            def aggregate_fit(
+                self,
+                server_round: int,
+                results: List[Tuple[fl.server.client_proxy.ClientProxy, fl.common.FitRes]],
+                failures: List[Union[Tuple[ClientProxy, FitRes], BaseException]],
+            ) -> Tuple[Optional[Parameters], Dict[str, Scalar]]:
+
+                # Call aggregate_fit from base class (FedAvg) to aggregate parameters and metrics
+                aggregated_parameters, aggregated_metrics = super().aggregate_fit(server_round, results, failures)
+
+                if aggregated_parameters is not None:
+                    # Convert `Parameters` to `List[np.ndarray]`
+                    aggregated_ndarrays: List[np.ndarray] = fl.common.parameters_to_ndarrays(aggregated_parameters)
+
+                    # Save aggregated_ndarrays
+                    print(f"Saving round {server_round} aggregated_ndarrays...")
+                    np.savez(f"docs/SAVEresults/TestFolder/C={cfg.num_clients}_weights.npz", *aggregated_ndarrays)
+                    # np.savez(f"docs/hannesResults/{cfg.current_test}/round-{server_round}-weights.npz", *aggregated_ndarrays)
+
+                return aggregated_parameters, aggregated_metrics
+
+        strategy = SaveModelStrategyFedAvg(
+            fraction_fit=cfg.client_fraction,
+            fraction_evaluate=cfg.frac_eval, # Hannes (changed from 0.0)
+            min_fit_clients=int(cfg.num_clients * cfg.client_fraction),
+            min_evaluate_clients=0,
+            min_available_clients=cfg.num_clients,
+            evaluate_fn=evaluate_fn,
+            evaluate_metrics_aggregation_fn=utils.weighted_average,
+            # fit_metrics_aggregation_fn=utils.weighted_average, #Daniel
+            )
     else: # Go with FedAvg
+        print("Avg running")
         strategy = fl.server.strategy.FedAvg(
             fraction_fit=cfg.client_fraction,
             fraction_evaluate = cfg.frac_eval, # 1.0, # Hannes (changed from 0.0)
@@ -120,93 +193,6 @@ def main(cfg: DictConfig) -> None:
     # Hannes added line below (as done in example)
     strategy.initial_parameters = initial_parameters
 
-    # # Hannes (MED DANIELS ÄNDRINGAR)
-    # fed_optimizer = cfg.fed_optimizer
-    # if fed_optimizer == "FedProx":
-    #     strategy = fl.server.strategy.FedProx(
-    #         fraction_fit=cfg.client_fraction,
-    #         fraction_evaluate=cfg.frac_eval, # Hannes (changed from 0.0)
-    #         min_fit_clients=int(cfg.num_clients * cfg.client_fraction),
-    #         min_evaluate_clients=0,
-    #         min_available_clients=cfg.num_clients,
-    #         evaluate_fn=evaluate_fn,
-    #         evaluate_metrics_aggregation_fn=utils.weighted_average,
-    #         proximal_mu = cfg.mu #Daniel
-
-    #     )
-    # elif fed_optimizer == "FedAvgM":
-    #     strategy = fl.server.strategy.FedAvgM(
-    #         fraction_fit=cfg.client_fraction,
-    #         fraction_evaluate=cfg.frac_eval, # Hannes (changed from 0.0)
-    #         min_fit_clients=int(cfg.num_clients * cfg.client_fraction),
-    #         min_evaluate_clients=0,
-    #         min_available_clients=cfg.num_clients,
-    #         evaluate_fn=evaluate_fn,
-    #         evaluate_metrics_aggregation_fn=utils.weighted_average,
-    #     )
-    # elif fed_optimizer == "SaveModelStrategyFedAvg":
-    #     from logging import WARNING
-    #     from typing import Callable, Dict, List, Optional, Tuple, Union
-
-    #     from flwr.common import (
-    #         FitRes,
-    #         MetricsAggregationFn,
-    #         NDArrays,
-    #         Parameters,
-    #         Scalar,
-    #         ndarrays_to_parameters,
-    #         parameters_to_ndarrays,
-    #     )
-    #     from flwr.common.logger import log
-    #     from flwr.server.client_manager import ClientManager
-    #     from flwr.server.client_proxy import ClientProxy
-
-    #     from flwr.server.strategy.aggregate import aggregate
-    #     from flwr.server.strategy.fedavg import FedAvg
-    #     class SaveModelStrategyFedAvg(fl.server.strategy.FedAvg):
-    #         def aggregate_fit(
-    #             self,
-    #             server_round: int,
-    #             results: List[Tuple[fl.server.client_proxy.ClientProxy, fl.common.FitRes]],
-    #             failures: List[Union[Tuple[ClientProxy, FitRes], BaseException]],
-    #         ) -> Tuple[Optional[Parameters], Dict[str, Scalar]]:
-
-    #             # Call aggregate_fit from base class (FedAvg) to aggregate parameters and metrics
-    #             aggregated_parameters, aggregated_metrics = super().aggregate_fit(server_round, results, failures)
-
-    #             if aggregated_parameters is not None:
-    #                 # Convert `Parameters` to `List[np.ndarray]`
-    #                 aggregated_ndarrays: List[np.ndarray] = fl.common.parameters_to_ndarrays(aggregated_parameters)
-
-    #                 # Save aggregated_ndarrays
-    #                 print(f"Saving round {server_round} aggregated_ndarrays...")
-    #                 np.savez(f"docs/SAVEresults/num_clients_long_run/C={cfg.num_clients}_weights.npz", *aggregated_ndarrays)
-    #                 # np.savez(f"docs/hannesResults/{cfg.current_test}/round-{server_round}-weights.npz", *aggregated_ndarrays)
-
-    #             return aggregated_parameters, aggregated_metrics
-
-    #     strategy = SaveModelStrategyFedAvg(
-    #         fraction_fit=cfg.client_fraction,
-    #         fraction_evaluate=cfg.frac_eval, # Hannes (changed from 0.0)
-    #         min_fit_clients=int(cfg.num_clients * cfg.client_fraction),
-    #         min_evaluate_clients=0,
-    #         min_available_clients=cfg.num_clients,
-    #         evaluate_fn=evaluate_fn,
-    #         evaluate_metrics_aggregation_fn=utils.weighted_average,
-    #         # fit_metrics_aggregation_fn=utils.weighted_average, #Daniel
-    #         )
-        
-    # else: # Go with FedAvg
-    #     strategy = fl.server.strategy.FedAvg(
-    #         fraction_fit=cfg.client_fraction,
-    #         fraction_evaluate=cfg.frac_eval, # Hannes (changed from 0.0)
-    #         min_fit_clients=int(cfg.num_clients * cfg.client_fraction),
-    #         min_evaluate_clients=0,
-    #         min_available_clients=cfg.num_clients,
-    #         evaluate_fn=evaluate_fn,
-    #         evaluate_metrics_aggregation_fn=utils.weighted_average,
-    #         # fit_metrics_aggregation_fn=utils.weighted_average, #Daniel
-    #     )
 
     # Start simulation
     history = fl.simulation.start_simulation(
@@ -214,14 +200,14 @@ def main(cfg: DictConfig) -> None:
         num_clients=cfg.num_clients,
         config=fl.server.ServerConfig(num_rounds=cfg.num_rounds),
         strategy=strategy,
-        # # OBS Hannes, tar bort GPU shit så länge
-        # client_resources={"num_gpus": 1.0}, #Daniel for GPU
-        # ray_init_args = { #Daniel for GPU
-        #     "include_dashboard": True, # we need this one for tracking
-        #     "num_cpus": 1,
-        #     "num_gpus": 1,
-        #     # "memory": ram_memory,
-        # }
+        # OBS Hannes, tar bort GPU shit så länge
+        client_resources={"num_gpus": 1.0}, #Daniel for GPU
+        ray_init_args = { #Daniel for GPU
+            "include_dashboard": True, # we need this one for tracking
+            "num_cpus": 1,
+            "num_gpus": 1,
+            # "memory": ram_memory,
+        }
     )
 
     file_suffix: str = (
