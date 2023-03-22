@@ -120,70 +120,11 @@ def main(cfg: DictConfig) -> None:
             evaluate_metrics_aggregation_fn=utils.weighted_average,
             proximal_mu = cfg.mu,
         )
-    elif fed_optimizer == "FedAvgM":
-        print("AvgM running")
-        strategy = fl.server.strategy.FedAvgM(
-            fraction_fit=cfg.client_fraction,
-            fraction_evaluate = cfg.frac_eval,
-            min_fit_clients=int(cfg.num_clients * cfg.client_fraction),
-            min_evaluate_clients=0,
-            min_available_clients=cfg.num_clients,
-            evaluate_fn=evaluate_fn,
-            evaluate_metrics_aggregation_fn=utils.weighted_average,
-        )
-    elif fed_optimizer == "FedAdam": # Hannes_FedOpt (Whole block) TODO: fix
-        print("Adam running")
-        strategy = fl.server.strategy.FedAdam(
-            fraction_fit=cfg.client_fraction,
-            fraction_evaluate = cfg.frac_eval,
-            min_fit_clients=int(cfg.num_clients * cfg.client_fraction),
-            min_evaluate_clients=0,
-            min_available_clients=cfg.num_clients,
-            evaluate_fn=evaluate_fn,
-            evaluate_metrics_aggregation_fn=utils.weighted_average,
-            accept_failures = True, # Hannes, added to fit fedadagrad
-            initial_parameters=initial_parameters, # Hannes  Hannes_FedOpt
-            # initial_parameters=None, # Hannes  Hannes_FedOpt
-            eta = cfg.eta, #1e-1, # Hannes
-            eta_l = cfg.eta1, #1e-1, # Hannes 
-            tau = cfg.tau, #1e-9, # Hannes, changed from e-9 to avoid nan
-        )
-    elif fed_optimizer == "FedAdagrad": # Hannes_FedOpt (Whole block) TODO: fix
-        print("Adagrad running")
-        strategy = fl.server.strategy.FedAdagrad(
-            fraction_fit=cfg.client_fraction,
-            fraction_evaluate = cfg.frac_eval,
-            min_fit_clients=int(cfg.num_clients * cfg.client_fraction),
-            min_evaluate_clients=0,
-            min_available_clients=cfg.num_clients,
-            evaluate_fn=evaluate_fn,
-            evaluate_metrics_aggregation_fn=utils.weighted_average,
-            accept_failures = True, # Hannes
-            initial_parameters=initial_parameters, # Hannes  Hannes_FedOpt
-            eta = cfg.eta, #1e-1, # Hannes
-            eta_l = cfg.eta1, #1e-1, # Hannes 
-            tau = cfg.tau, #1e-9, # Hannes, changed from e-9 to avoid nan
-        ) 
-    elif fed_optimizer == "FedYogi": # Hannes_FedOpt (Whole block) TODO: fix
-        print("Yogi running")
-        strategy = fl.server.strategy.FedYogi(
-            fraction_fit=cfg.client_fraction,
-            fraction_evaluate = cfg.frac_eval,
-            min_fit_clients=int(cfg.num_clients * cfg.client_fraction),
-            min_evaluate_clients=0,
-            min_available_clients=cfg.num_clients,
-            evaluate_fn=evaluate_fn,
-            evaluate_metrics_aggregation_fn=utils.weighted_average,
-            accept_failures = True, # Hannes
-            initial_parameters=initial_parameters, # Hannes  Hannes_FedOpt
-            eta = cfg.eta, #1e-1, # Hannes
-            eta_l = cfg.eta1, #1e-1, # Hannes 
-            tau = cfg.tau, #1e-9, # Hannes, changed from e-9 to avoid nan
-        ) 
-    elif fed_optimizer == "SaveModelStrategyFedAvg":
-        print("Avg Save Model running")
+
+    elif fed_optimizer == "saveFedProx":
+        print("Prox Save Model running")
      
-        class SaveModelStrategyFedAvg(fl.server.strategy.FedAvg):
+        class saveFedProx(fl.server.strategy.FedProx):
             def aggregate_fit(
                 self,
                 server_round: int,
@@ -204,17 +145,230 @@ def main(cfg: DictConfig) -> None:
                    
                 return aggregated_parameters, aggregated_metrics
 
-        strategy = SaveModelStrategyFedAvg(
+        strategy = saveFedProx(
             fraction_fit=cfg.client_fraction,
-            fraction_evaluate=cfg.frac_eval, # Hannes (changed from 0.0)
+            fraction_evaluate = cfg.frac_eval, # 1.0, # Hannes (changed from 0.0)
             min_fit_clients=int(cfg.num_clients * cfg.client_fraction),
             min_evaluate_clients=0,
             min_available_clients=cfg.num_clients,
             evaluate_fn=evaluate_fn,
             evaluate_metrics_aggregation_fn=utils.weighted_average,
-            # fit_metrics_aggregation_fn=utils.weighted_average, #Daniel
+            proximal_mu = cfg.mu,
             )
-    else: # Go with FedAvg
+        
+    elif fed_optimizer == "FedAvgM":
+        print("AvgM running")
+        strategy = fl.server.strategy.FedAvgM(
+            fraction_fit=cfg.client_fraction,
+            fraction_evaluate = cfg.frac_eval,
+            min_fit_clients=int(cfg.num_clients * cfg.client_fraction),
+            min_evaluate_clients=0,
+            min_available_clients=cfg.num_clients,
+            evaluate_fn=evaluate_fn,
+            evaluate_metrics_aggregation_fn=utils.weighted_average,
+        )
+
+    elif fed_optimizer == "saveFedAvgM":
+        print("AvgM Save Model running")
+     
+        class saveFedAvgM(fl.server.strategy.FedAvgM):
+            def aggregate_fit(
+                self,
+                server_round: int,
+                results: List[Tuple[fl.server.client_proxy.ClientProxy, fl.common.FitRes]],
+                failures: List[Union[Tuple[ClientProxy, FitRes], BaseException]],
+            ) -> Tuple[Optional[Parameters], Dict[str, Scalar]]:
+
+                # Call aggregate_fit from base class (FedAvg) to aggregate parameters and metrics
+                aggregated_parameters, aggregated_metrics = super().aggregate_fit(server_round, results, failures)
+
+                if aggregated_parameters is not None:
+                    # Convert `Parameters` to `List[np.ndarray]`
+                    aggregated_ndarrays: List[np.ndarray] = fl.common.parameters_to_ndarrays(aggregated_parameters)
+
+                    # Save aggregated_ndarrays
+                    print(f"Saving round {server_round} aggregated_ndarrays...")
+                    np.savez(f"docs/tmpResults/weights_{file_suffix}.npz", *aggregated_ndarrays)
+                   
+                return aggregated_parameters, aggregated_metrics
+
+        strategy = saveFedAvgM(
+            fraction_fit=cfg.client_fraction,
+            fraction_evaluate = cfg.frac_eval,
+            min_fit_clients=int(cfg.num_clients * cfg.client_fraction),
+            min_evaluate_clients=0,
+            min_available_clients=cfg.num_clients,
+            evaluate_fn=evaluate_fn,
+            evaluate_metrics_aggregation_fn=utils.weighted_average,
+            )
+        
+    elif fed_optimizer == "FedAdam": # Hannes_FedOpt (Whole block) TODO: fix
+        print("Adam running")
+        strategy = fl.server.strategy.FedAdam(
+            fraction_fit=cfg.client_fraction,
+            fraction_evaluate = cfg.frac_eval,
+            min_fit_clients=int(cfg.num_clients * cfg.client_fraction),
+            min_evaluate_clients=0,
+            min_available_clients=cfg.num_clients,
+            evaluate_fn=evaluate_fn,
+            evaluate_metrics_aggregation_fn=utils.weighted_average,
+            accept_failures = True, # Hannes, added to fit fedadagrad
+            initial_parameters=initial_parameters, # Hannes  Hannes_FedOpt
+            # initial_parameters=None, # Hannes  Hannes_FedOpt
+            eta = cfg.eta, #1e-1, # Hannes
+            eta_l = cfg.eta1, #1e-1, # Hannes 
+            tau = cfg.tau, #1e-9, # Hannes, changed from e-9 to avoid nan
+        )
+
+    elif fed_optimizer == "saveFedAdam":
+        print("Adam Save Model running")
+        class saveFedAdam(fl.server.strategy.FedAdam):
+            def aggregate_fit(
+                self,
+                server_round: int,
+                results: List[Tuple[fl.server.client_proxy.ClientProxy, fl.common.FitRes]],
+                failures: List[Union[Tuple[ClientProxy, FitRes], BaseException]],
+            ) -> Tuple[Optional[Parameters], Dict[str, Scalar]]:
+
+                # Call aggregate_fit from base class (FedAvg) to aggregate parameters and metrics
+                aggregated_parameters, aggregated_metrics = super().aggregate_fit(server_round, results, failures)
+
+                if aggregated_parameters is not None:
+                    # Convert `Parameters` to `List[np.ndarray]`
+                    aggregated_ndarrays: List[np.ndarray] = fl.common.parameters_to_ndarrays(aggregated_parameters)
+
+                    # Save aggregated_ndarrays
+                    print(f"Saving round {server_round} aggregated_ndarrays...")
+                    np.savez(f"docs/tmpResults/weights_{file_suffix}.npz", *aggregated_ndarrays)
+                   
+                return aggregated_parameters, aggregated_metrics
+
+        strategy = saveFedAdam(
+            fraction_fit=cfg.client_fraction,
+            fraction_evaluate = cfg.frac_eval,
+            min_fit_clients=int(cfg.num_clients * cfg.client_fraction),
+            min_evaluate_clients=0,
+            min_available_clients=cfg.num_clients,
+            evaluate_fn=evaluate_fn,
+            evaluate_metrics_aggregation_fn=utils.weighted_average,
+            accept_failures = True, # Hannes, added to fit fedadagrad
+            initial_parameters=initial_parameters, # Hannes  Hannes_FedOpt
+            # initial_parameters=None, # Hannes  Hannes_FedOpt
+            eta = cfg.eta, #1e-1, # Hannes
+            eta_l = cfg.eta1, #1e-1, # Hannes 
+            tau = cfg.tau, #1e-9, # Hannes, changed from e-9 to avoid nan
+            )
+        
+    elif fed_optimizer == "FedAdagrad": # Hannes_FedOpt (Whole block) TODO: fix
+        print("Adagrad running")
+        strategy = fl.server.strategy.FedAdagrad(
+            fraction_fit=cfg.client_fraction,
+            fraction_evaluate = cfg.frac_eval,
+            min_fit_clients=int(cfg.num_clients * cfg.client_fraction),
+            min_evaluate_clients=0,
+            min_available_clients=cfg.num_clients,
+            evaluate_fn=evaluate_fn,
+            evaluate_metrics_aggregation_fn=utils.weighted_average,
+            accept_failures = True, # Hannes
+            initial_parameters=initial_parameters, # Hannes  Hannes_FedOpt
+            eta = cfg.eta, #1e-1, # Hannes
+            eta_l = cfg.eta1, #1e-1, # Hannes 
+            tau = cfg.tau, #1e-9, # Hannes, changed from e-9 to avoid nan
+        ) 
+
+    elif fed_optimizer == "saveFedAdagrad":
+        print("Adagrad Save Model running")
+        class saveFedAdagrad(fl.server.strategy.FedAdagrad):
+            def aggregate_fit(
+                self,
+                server_round: int,
+                results: List[Tuple[fl.server.client_proxy.ClientProxy, fl.common.FitRes]],
+                failures: List[Union[Tuple[ClientProxy, FitRes], BaseException]],
+            ) -> Tuple[Optional[Parameters], Dict[str, Scalar]]:
+
+                # Call aggregate_fit from base class (FedAvg) to aggregate parameters and metrics
+                aggregated_parameters, aggregated_metrics = super().aggregate_fit(server_round, results, failures)
+
+                if aggregated_parameters is not None:
+                    # Convert `Parameters` to `List[np.ndarray]`
+                    aggregated_ndarrays: List[np.ndarray] = fl.common.parameters_to_ndarrays(aggregated_parameters)
+
+                    # Save aggregated_ndarrays
+                    print(f"Saving round {server_round} aggregated_ndarrays...")
+                    np.savez(f"docs/tmpResults/weights_{file_suffix}.npz", *aggregated_ndarrays)
+                   
+                return aggregated_parameters, aggregated_metrics
+
+        strategy = saveFedAdagrad(
+            fraction_fit=cfg.client_fraction,
+            fraction_evaluate = cfg.frac_eval,
+            min_fit_clients=int(cfg.num_clients * cfg.client_fraction),
+            min_evaluate_clients=0,
+            min_available_clients=cfg.num_clients,
+            evaluate_fn=evaluate_fn,
+            evaluate_metrics_aggregation_fn=utils.weighted_average,
+            accept_failures = True, # Hannes
+            initial_parameters=initial_parameters, # Hannes  Hannes_FedOpt
+            eta = cfg.eta, #1e-1, # Hannes
+            eta_l = cfg.eta1, #1e-1, # Hannes 
+            tau = cfg.tau, #1e-9, # Hannes, changed from e-9 to avoid nan
+            )
+        
+    elif fed_optimizer == "FedYogi": # Hannes_FedOpt (Whole block) TODO: fix
+        print("Yogi running")
+        strategy = fl.server.strategy.FedYogi(
+            fraction_fit=cfg.client_fraction,
+            fraction_evaluate = cfg.frac_eval,
+            min_fit_clients=int(cfg.num_clients * cfg.client_fraction),
+            min_evaluate_clients=0,
+            min_available_clients=cfg.num_clients,
+            evaluate_fn=evaluate_fn,
+            evaluate_metrics_aggregation_fn=utils.weighted_average,
+            accept_failures = True, # Hannes
+            initial_parameters=initial_parameters, # Hannes  Hannes_FedOpt
+            eta = cfg.eta, #1e-1, # Hannes
+            eta_l = cfg.eta1, #1e-1, # Hannes 
+            tau = cfg.tau, #1e-9, # Hannes, changed from e-9 to avoid nan
+        ) 
+    elif fed_optimizer == "saveFedYogi":
+        print("Yogi Save Model running")
+        class saveFedYogi(fl.server.strategy.FedYogi):
+            def aggregate_fit(
+                self,
+                server_round: int,
+                results: List[Tuple[fl.server.client_proxy.ClientProxy, fl.common.FitRes]],
+                failures: List[Union[Tuple[ClientProxy, FitRes], BaseException]],
+            ) -> Tuple[Optional[Parameters], Dict[str, Scalar]]:
+
+                # Call aggregate_fit from base class (FedAvg) to aggregate parameters and metrics
+                aggregated_parameters, aggregated_metrics = super().aggregate_fit(server_round, results, failures)
+
+                if aggregated_parameters is not None:
+                    # Convert `Parameters` to `List[np.ndarray]`
+                    aggregated_ndarrays: List[np.ndarray] = fl.common.parameters_to_ndarrays(aggregated_parameters)
+
+                    # Save aggregated_ndarrays
+                    print(f"Saving round {server_round} aggregated_ndarrays...")
+                    np.savez(f"docs/tmpResults/weights_{file_suffix}.npz", *aggregated_ndarrays)
+                   
+                return aggregated_parameters, aggregated_metrics
+
+        strategy = saveFedYogi(
+              fraction_fit=cfg.client_fraction,
+            fraction_evaluate = cfg.frac_eval,
+            min_fit_clients=int(cfg.num_clients * cfg.client_fraction),
+            min_evaluate_clients=0,
+            min_available_clients=cfg.num_clients,
+            evaluate_fn=evaluate_fn,
+            evaluate_metrics_aggregation_fn=utils.weighted_average,
+            accept_failures = True, # Hannes
+            initial_parameters=initial_parameters, # Hannes  Hannes_FedOpt
+            eta = cfg.eta, #1e-1, # Hannes
+            eta_l = cfg.eta1, #1e-1, # Hannes 
+            tau = cfg.tau, #1e-9, # Hannes, changed from e-9 to avoid nan
+            )
+        
+    elif fed_optimizer == "FedAvg": # Go with FedAvg
         print("Avg running")
         strategy = fl.server.strategy.FedAvg(
             fraction_fit=cfg.client_fraction,
@@ -226,6 +380,42 @@ def main(cfg: DictConfig) -> None:
             # fit_metrics_aggregation_fn=utils.weighted_average, # Hannes, 2023-03-16 NOT WORKING 
             evaluate_metrics_aggregation_fn=utils.weighted_average,
         )
+        
+    elif fed_optimizer == "saveFedAvg":
+        print("Avg Save Model running")
+     
+        class saveFedAvg(fl.server.strategy.FedAvg):
+            def aggregate_fit(
+                self,
+                server_round: int,
+                results: List[Tuple[fl.server.client_proxy.ClientProxy, fl.common.FitRes]],
+                failures: List[Union[Tuple[ClientProxy, FitRes], BaseException]],
+            ) -> Tuple[Optional[Parameters], Dict[str, Scalar]]:
+
+                # Call aggregate_fit from base class (FedAvg) to aggregate parameters and metrics
+                aggregated_parameters, aggregated_metrics = super().aggregate_fit(server_round, results, failures)
+
+                if aggregated_parameters is not None:
+                    # Convert `Parameters` to `List[np.ndarray]`
+                    aggregated_ndarrays: List[np.ndarray] = fl.common.parameters_to_ndarrays(aggregated_parameters)
+
+                    # Save aggregated_ndarrays
+                    print(f"Saving round {server_round} aggregated_ndarrays...")
+                    np.savez(f"docs/tmpResults/weights_{file_suffix}.npz", *aggregated_ndarrays)
+                   
+                return aggregated_parameters, aggregated_metrics
+
+        strategy = saveFedAvg(
+            fraction_fit=cfg.client_fraction,
+            fraction_evaluate=cfg.frac_eval, # Hannes (changed from 0.0)
+            min_fit_clients=int(cfg.num_clients * cfg.client_fraction),
+            min_evaluate_clients=0,
+            min_available_clients=cfg.num_clients,
+            evaluate_fn=evaluate_fn,
+            evaluate_metrics_aggregation_fn=utils.weighted_average,
+            # fit_metrics_aggregation_fn=utils.weighted_average, #Daniel
+            )
+        
     # Hannes added line below (as done in example)
     strategy.initial_parameters = initial_parameters
 
