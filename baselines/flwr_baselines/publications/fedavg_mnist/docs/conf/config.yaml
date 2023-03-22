@@ -20,7 +20,7 @@ fed_optimizer: "FedAvg" # Hannes
 current_test: "num_clients" # Hannes 
 eta: 0.1 # Hannes
 eta1: 0.1 # Hannes 
-tau: 0.001 # Hannes
+tau: 0.01 # Hannes Daniel
 
 get_initial_parameters:
   _target_: utils.get_initial_parameters
@@ -50,3 +50,6 @@ get_initial_parameters:
 
 # Run 6 client_fraction long run
 # psudo nohup python main.py num_clients=10 num_rounds=100 batch_size=32 iid=True client_fraction=1.0,0.8,0.6,0.4,0.2 frac_eval=1.0 fed_optimizer="SaveModelStrategyFedAvg" current_test="num_clients" learning_rate=0.1 --multirun & 
+
+# Run 7 fed_optimizer long run
+# psudo nohup python main.py num_clients=10 num_rounds=100 batch_size=32 iid=True client_fraction=1.0 frac_eval=1.0 fed_optimizer="FedAdagrad","FedAdam","FedYogi","FedProx","FedAvgM","FedAvg" current_test="fed_optimizer" learning_rate=0.1 --multirun & 
