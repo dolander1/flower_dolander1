@@ -104,8 +104,8 @@ def _partition_data(
         A list of dataset for each client and a single dataset to be use for testing the model.
     """
     trainset, testset = _download_data()
-    trainset = Subset(trainset, list(range(0, len(trainset)//1, 1))) #Daniel new line, less data selected
-    testset = Subset(testset, list(range(0, len(testset)//1, 1))) #Daniel new line, less data selected
+#     trainset = Subset(trainset, list(range(0, len(trainset)//1, 1))) #Daniel new line, less data selected
+#     testset = Subset(testset, list(range(0, len(testset)//1, 1))) #Daniel new line, less data selected
     
     partition_size = int(len(trainset) / num_clients)
     lengths = [partition_size] * num_clients
