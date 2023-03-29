@@ -54,7 +54,7 @@ get_initial_parameters:
 # Run 7 fed_optimizer long run
 # psudo nohup python main.py num_clients=10 num_rounds=100 batch_size=32 iid=True client_fraction=1.0 frac_eval=1.0 fed_optimizer="FedAdagrad","FedAdam","FedYogi","FedProx","FedAvgM","FedAvg" current_test="fed_optimizer" learning_rate=0.1 --multirun &
 
-# Run 8 non-IID fed_optimizer long run
+# Run 8 non-IID non-balanced and balanced fed_optimizer long run
 # psudo nohup python main.py num_clients=10 num_rounds=100 batch_size=32 iid=False balance=True,False client_fraction=1.0 frac_eval=1.0 fed_optimizer="FedAdagrad","FedAdam","FedYogi","FedProx","FedAvgM","FedAvg" current_test="iid" learning_rate=0.1 --multirun & 
 
 # Run 8.5 non-IID fed_optimizer=FedAdagrad long run
@@ -81,7 +81,11 @@ get_initial_parameters:
 # Run 12.75 non-IID balanced num_clients exp shardsize=5 (instead of 2) client_fraction=0.5 run:
 # psudo nohup python main.py num_clients=2,3,4,6,8,10 num_rounds=5 batch_size=32 iid=False balance=True client_fraction=0.5 frac_eval=1.0 fed_optimizer="saveFedAvg" current_test="num_clients" --multirun & 
 
+# Run 13 non-IID non-balanced batch_size long run
+# psudo nohup python main.py num_clients=10 num_rounds=100 batch_size=10,16,32,64,128 iid=False balance=False client_fraction=1.0 frac_eval=1.0 fed_optimizer="saveFedAvg" current_test="batch_size" learning_rate=0.1 --multirun & 
 
+# Run 14 non-IID non-balanced learning_rate long run
+# psudo nohup python main.py num_clients=10 num_rounds=100 batch_size=32 iid=False balance=False client_fraction=1.0 frac_eval=1.0 fed_optimizer="saveFedAvg" current_test="learning_rate" learning_rate=0.1,0.01,0.001,0.0001 --multirun & 
 
 
 
