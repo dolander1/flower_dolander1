@@ -85,8 +85,10 @@ get_initial_parameters:
 # psudo nohup python main.py num_clients=10 num_rounds=100 batch_size=10,16,32,64,128 iid=False balance=False client_fraction=1.0 frac_eval=1.0 fed_optimizer="saveFedAvg" current_test="batch_size" learning_rate=0.1 --multirun & 
 
 # Run 14 non-IID non-balanced learning_rate long run
-# psudo nohup python main.py num_clients=10 num_rounds=100 batch_size=32 iid=False balance=False client_fraction=1.0 frac_eval=1.0 fed_optimizer="saveFedAvg" current_test="learning_rate" learning_rate=0.1,0.01,0.001,0.0001 --multirun & 
+# psudo nohup python main.py num_clients=10 num_rounds=100 batch_size=32 iid=False balance=False client_fraction=1.0 frac_eval=1.0 fed_optimizer="saveFedAvg" current_test="learning_rate" learning_rate=0.1,0.01,0.001,0.0001 --multirun &
 
+# Run 15 CL vs FL with one client long run
+# psudo nohup python main.py num_clients=1 num_rounds=100 batch_size=32 iid=True,False balance=False client_fraction=1.0 frac_eval=1.0 fed_optimizer="saveFedAvg" current_test="learning_rate" learning_rate=0.1 --multirun & 
 
 
 
