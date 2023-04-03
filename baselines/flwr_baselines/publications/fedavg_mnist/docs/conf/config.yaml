@@ -26,7 +26,7 @@ get_initial_parameters:
   _target_: utils.get_initial_parameters
   # num_classes: ${num_classes}
 
-# psudo nohup python main.py num_clients=10 num_rounds=2 batch_size=32 iid=True client_fraction=1.0 frac_eval=1.0 fed_optimizer="FedAvg" current_test="num_clients" --multirun & 
+# psudo nohup python main.py num_clients=2 num_rounds=2 batch_size=32 iid=True client_fraction=1.0 frac_eval=1.0 fed_optimizer="FedAvg" current_test="num_clients" --multirun & 
 # nohup python [python file name.py] &
 # Send files from server to local (done from local)
 # scp -r danielhannes@10.40.62.12:/home/hannes/storage_folder/daniel/flower/baselines/flwr_baselines/publications/fedavg_mnist/docs/SAVEresults .
@@ -71,6 +71,9 @@ get_initial_parameters:
 
 # Run 10.5 client_fraction num_clients heat map
 # psudo nohup python main.py num_clients=5,20,40,80 num_rounds=100 batch_size=32 iid=True client_fraction=0.8,0.6,0.4,0.2 frac_eval=1.0 fed_optimizer="saveFedAvg" current_test="num_clients" learning_rate=0.1 --multirun & 
+
+# Run 10.75 client_fraction num_clients heat map
+# psudo nohup python main.py num_clients=40,80 num_rounds=100 batch_size=32 iid=True client_fraction=0.8,0.6,0.4,0.2 frac_eval=1.0 fed_optimizer="saveFedAvg" current_test="num_clients" learning_rate=0.1 --multirun & 
 
 # Run 11 non-IID non-balanced client_fraction long run:
 # psudo nohup python main.py num_clients=10 num_rounds=100 batch_size=32 iid=False balance=False client_fraction=1.0,0.8,0.6,0.4,0.2 frac_eval=1.0 fed_optimizer="saveFedAvg" current_test="client_fraction" --multirun & 
