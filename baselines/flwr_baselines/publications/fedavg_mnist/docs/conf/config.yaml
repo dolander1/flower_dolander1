@@ -67,6 +67,9 @@ get_initial_parameters:
 # Run 9.5 non-IID non-balanced num_clients long run:
 # psudo nohup python main.py num_clients=20,40,80 num_rounds=100 batch_size=32 iid=False balance=False client_fraction=1.0 frac_eval=1.0 fed_optimizer="saveFedAvg" current_test="num_clients" --multirun & 
 
+# Run 9.75 non-IID non-balanced num_clients long run:
+# psudo nohup python main.py num_clients=80 num_rounds=100 batch_size=32 iid=False balance=False client_fraction=1.0 frac_eval=1.0 fed_optimizer="saveFedAvg" current_test="num_clients" & 
+
 # Run 10 client_fraction num_clients heat map
 # psudo nohup python main.py num_clients=5,20,40,80 num_rounds=50 batch_size=32 iid=True client_fraction=0.8,0.6,0.4,0.2 frac_eval=1.0 fed_optimizer="saveFedAvg" current_test="num_clients" learning_rate=0.1 --multirun & 
 
